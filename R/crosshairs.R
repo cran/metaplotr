@@ -15,7 +15,8 @@
 #'@param y_lab Title of the y-axis.
 #'@param mdrtr Whether there is a moderator variable?
 #'@param mdrtr_lab Label of the moderator variable.
-#'@param mdrtr_lab_pos Determine the positon of the moderator labels.
+#'@param mdrtr_lab_pos Determine the positon of the moderator labels. Values
+#'       between 0.1 and 0.9 are allowed.
 #'@param lab_size Size of the axis titles.
 #'@param confint Confidence interval that is used to determine
 #'       length of the whiskers.
@@ -33,6 +34,7 @@
 #'@aliases cross-hairs
 #'
 #'@examples
+#'\dontrun{
 #'# Load and attach metaplotr package to the Global Environment
 #'library(metaplotr)
 #'
@@ -44,23 +46,27 @@
 #'
 #'# You can check out help file of the \code{crosshairs} function.
 #'# help(crosshairs)
+#'}
 #'
 #'# Basic usage of the \code{crosshairs} function.
 #'crosshairs(FergusonBrannick2012$pub_z, FergusonBrannick2012$dis_z,
 #'FergusonBrannick2012$pub_z_se, FergusonBrannick2012$dis_z_se)
 #'
+#'\dontrun{
 #'# whis_on option opens and closes whiskers.
 #'crosshairs(FergusonBrannick2012$pub_z, FergusonBrannick2012$dis_z,
 #'FergusonBrannick2012$pub_z_se, FergusonBrannick2012$dis_z_se,
 #'whis_on = FALSE)
+#'}
 #'
 #'# confint option can control whiskers length.
 #'crosshairs(FergusonBrannick2012$pub_z, FergusonBrannick2012$dis_z,
-#'FergusonBrannick2012$pub_z_se, FergusonBrannick2012$dis_z_se, confint = .95)
-#'crosshairs(FergusonBrannick2012$pub_z, FergusonBrannick2012$dis_z,
 #'FergusonBrannick2012$pub_z_se, FergusonBrannick2012$dis_z_se, confint = .7)
+#'
 #'crosshairs(FergusonBrannick2012$pub_z, FergusonBrannick2012$dis_z,
 #'FergusonBrannick2012$pub_z_se, FergusonBrannick2012$dis_z_se, confint = .2)
+#'crosshairs(FergusonBrannick2012$pub_z, FergusonBrannick2012$dis_z,
+#'FergusonBrannick2012$pub_z_se, FergusonBrannick2012$dis_z_se, confint = .95)
 #'
 #'# Main and axes labels can be changed.
 #'crosshairs(FergusonBrannick2012$pub_z, FergusonBrannick2012$dis_z,
@@ -78,11 +84,18 @@
 #'FergusonBrannick2012$pub_z_se, FergusonBrannick2012$dis_z_se,
 #'main_lab = 'No Boxplots', bxplts = FALSE)
 #'
+#'\dontrun{
 #'# Moderator legend and annotations can be used simulaneously.
 #'crosshairs(FergusonBrannick2012$pub_z, FergusonBrannick2012$dis_z,
 #'FergusonBrannick2012$pub_z_se, FergusonBrannick2012$dis_z_se,
 #'mdrtr = FergusonBrannick2012$mod, annotate = TRUE,
 #'main_lab = 'Moderator Legend and Annotation')
+#'
+#'# Moderator legend position can be adjusted.
+#'crosshairs(FergusonBrannick2012$pub_z, FergusonBrannick2012$dis_z,
+#'FergusonBrannick2012$pub_z_se, FergusonBrannick2012$dis_z_se,
+#'mdrtr = FergusonBrannick2012$mod, mdrtr_lab_pos = c(0.8, 0.8),
+#'main_lab = 'Moderator Legend Position Change')
 #'
 #'# Dot size can be changed.
 #'crosshairs(FergusonBrannick2012$pub_z, FergusonBrannick2012$dis_z,
@@ -95,11 +108,12 @@
 #'FergusonBrannick2012$pub_z_se, FergusonBrannick2012$dis_z_se,
 #'mdrtr = FergusonBrannick2012$mod, lab_size = 20,
 #'main_lab = 'Label Size Change')
+#'}
 #'
 #'@export
 crosshairs <- function(x, y, xse, yse, x_lab = NULL, y_lab = NULL,
                        main_lab = NULL, confint = 0.95, mdrtr = NULL,
-                       mdrtr_lab = NULL, mdrtr_lab_pos = NULL,
+                       mdrtr_lab = NULL, mdrtr_lab_pos = c(0.2, 0.9),
                        lab_size = 14, pnt_size = 3, whis_on = TRUE,
                        annotate = FALSE, grid_dense = FALSE, bxplts = TRUE) {
 
@@ -116,6 +130,10 @@ crosshairs <- function(x, y, xse, yse, x_lab = NULL, y_lab = NULL,
     main_lab <- 'Main Title of the Plot'
   }
 
+  # Moderator label positions
+  mdrtr_lposx <- NULL
+  mdrtr_lposy <- NULL
+
   # When a moderator variable is specified
   if (!is.null(mdrtr)) {
 
@@ -124,19 +142,42 @@ crosshairs <- function(x, y, xse, yse, x_lab = NULL, y_lab = NULL,
       mdrtr <- as.factor(mdrtr)
     }
 
-    # Determines moderator label position
-    if (is.null(mdrtr_lab_pos)) {
-      modrtr_xpos <- 0.2
-      modrtr_ypos <- 0.9
+    if (length(mdrtr_lab_pos) == 1) {
+      mdrtr_lab_pos[2] <- mdrtr_lab_pos[1]
     }
 
-    # Moderator legend position vector
-    legend_pst <- c(modrtr_xpos, modrtr_ypos)
+    # Maximum and minimum values of legend position on x and y axes
+    max_mdrtr_lab_pos_x <- 0.9
+    max_mdrtr_lab_pos_y <- 0.9
+    min_mdrtr_lab_pos_x <- 0.1
+    min_mdrtr_lab_pos_y <- 0.1
 
+    # Defines x axis limits
+    if (mdrtr_lab_pos[1] > max_mdrtr_lab_pos_x) {
+      mdrtr_lposx <- max_mdrtr_lab_pos_x
+    } else if (mdrtr_lab_pos[1] < min_mdrtr_lab_pos_x) {
+      mdrtr_lposx <- min_mdrtr_lab_pos_x
+    } else {
+      mdrtr_lposx <- mdrtr_lab_pos[1]
+    }
+
+    # Defines y axis limits
+    if (mdrtr_lab_pos[2] > max_mdrtr_lab_pos_y) {
+      mdrtr_lposy <- max_mdrtr_lab_pos_y
+    } else if (mdrtr_lab_pos[2] < min_mdrtr_lab_pos_y) {
+      mdrtr_lposy <- min_mdrtr_lab_pos_y
+    } else {
+      mdrtr_lposy <- mdrtr_lab_pos[2]
+    }
+
+    # Default moderator label
     if (is.null(mdrtr_lab)) {
       mdrtr_lab <- 'Mod Label'
     }
   }
+
+  # Moderator legend position vector
+  legend_pst <- c(mdrtr_lposx, mdrtr_lposy)
 
   # Assign formals to previous variables. To be modified.
   se.x <- xse
@@ -397,8 +438,6 @@ crosshairs <- function(x, y, xse, yse, x_lab = NULL, y_lab = NULL,
     ann.xy.corr <- paste('r =', xy.correlation, ' ')
     ann.x.mean <- paste('x M =', x.mean, ' ')
     ann.y.mean <- paste('y M =', y.mean, ' ')
-    print('annotation x axis scale')
-    print(axis.scale[2])
 
     main.plot <- main.plot +
       ggplot2::annotate('text',
